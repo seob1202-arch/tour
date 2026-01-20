@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GuidePick AI - 내 손안의 여행 가이드</title>
+    
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Pretendard', 'sans-serif'] },
+                    colors: { primary: '#3B82F6', dark: '#1e293b', bg: '#F8FAFC' },
+                    boxShadow: { 'float': '0 10px 25px -5px rgba(59, 130, 246, 0.15)' },
+                    animation: { 'fade-in-up': 'fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards' },
+                    keyframes: { fadeInUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } } }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .radio-option input:checked + div { border-color: #3B82F6; background-color: #EFF6FF; color: #3B82F6; font-weight: 700; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
+        .filter-chip.active { background-color: #1e293b; color: white; border-color: #1e293b; font-weight: 700; }
+        .modal-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .modal-visible { opacity: 1; visibility: visible; pointer-events: auto; }
+        #location-dropdown { transition: all 0.2s ease; transform-origin: top right; }
+        .survey-step { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-dark antialiased pb-10">
+
+    <div class="max-w-[600px] mx-auto bg-white min-h-screen shadow-2xl relative flex flex-col">
+        <header class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 px-5 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-extrabold text-primary cursor-pointer" onclick="location.reload()">GuidePick<span class="text-dark font-normal">.AI</span></h1>
+            <button class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-500"><i class="fa-regular fa-compass"></i></button>
+        </header>
+
+        <section id="survey-section" class="px-5 pt-6 pb-8 bg-gradient-to-b from-white to-blue-50/50">
+            <div class="mb-6">
+                <div class="flex justify-between items-end mb-2">
+                    <h2 id="survey-title" class="text-2xl font-bold leading-tight">어떤 여행을<br>계획 중이신가요?</h2>
+                    <span id="step-indicator" class="text-primary font-bold text-sm">1 / 5</span>
+                </div>
+                <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="bg-primary h-full transition-all duration-500" style="width: 20%;"></div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl p-6 shadow-float border border-blue-50 relative min-h-[360px] flex flex-col">
+                <div id="step-1" class="survey-step space-y-3">
+                    <p class="text-xs text-gray-400 mb-4 uppercase font-bold tracking-wider">Step 01. Travel Focus</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="radio-option cursor-pointer"><input type="radio" name="style" value="history" class="hidden" checked><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">🏛️ 역사/인문학</div></label>
+                        <label class="radio-option cursor-pointer"><input type="radio" name="style" value="activity" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">📸 액티비티/사진</div></label>
+                        <label class="radio-option cursor-pointer"><input type="radio" name="style" value="relax" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">🌿 힐링/여유</div></label>
+                        <label class="radio-option cursor-pointer"><input type="radio" name="style" value="food" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">🍽️ 미식 탐방</div></label>
+                    </div>
+                </div>
+
+                <div id="step-2" class="survey-step hidden space-y-3">
+                    <p class="text-xs text-gray-400 mb-4 uppercase font-bold tracking-wider">Step 02. Preference</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="radio-option cursor-pointer"><input type="checkbox" name="theme" value="museum" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">🎨 박물관/미술관</div></label>
+                        <label class="radio-option cursor-pointer"><input type="checkbox" name="theme" value="city" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">🌃 시내/야경 투어</div></label>
+                        <label class="radio-option cursor-pointer"><input type="checkbox" name="theme" value="suburb" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">🚌 근교 버스 투어</div></label>
+                        <label class="radio-option cursor-pointer"><input type="checkbox" name="theme" value="walking" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">🚶 골목 도보 투어</div></label>
+                    </div>
+                </div>
+
+                <div id="step-3" class="survey-step hidden space-y-3">
+                    <p class="text-xs text-gray-400 mb-4 uppercase font-bold tracking-wider">Step 03. Companions</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="radio-option cursor-pointer"><input type="radio" name="who" value="solo" class="hidden" checked><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">🎒 혼자 가요</div></label>
+                        <label class="radio-option cursor-pointer"><input type="radio" name="who" value="couple" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">👩‍❤️‍👨 커플/신혼</div></label>
+                        <label class="radio-option cursor-pointer"><input type="radio" name="who" value="family" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">👨‍👩‍👧 가족과 함께</div></label>
+                        <label class="radio-option cursor-pointer"><input type="radio" name="who" value="friends" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-center text-sm">👯‍♀️ 친구들과</div></label>
+                    </div>
+                </div>
+
+                <div id="step-4" class="survey-step hidden space-y-3">
+                    <p class="text-xs text-gray-400 mb-4 uppercase font-bold tracking-wider">Step 04. Budget Range</p>
+                    <div class="space-y-3">
+                        <label class="radio-option cursor-pointer block"><input type="radio" name="budget" value="5" class="hidden" checked><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-sm flex justify-between"><span>가성비</span> <span class="font-bold">5만원 이하</span></div></label>
+                        <label class="radio-option cursor-pointer block"><input type="radio" name="budget" value="10" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-sm flex justify-between"><span>표준형</span> <span class="font-bold">5~10만원</span></div></label>
+                        <label class="radio-option cursor-pointer block"><input type="radio" name="budget" value="99" class="hidden"><div class="border border-gray-100 bg-gray-50 rounded-2xl p-4 text-sm flex justify-between"><span>프리미엄</span> <span class="font-bold">제한 없음</span></div></label>
+                    </div>
+                </div>
+
+                <div id="step-5" class="survey-step hidden space-y-3">
+                    <p class="text-xs text-gray-400 mb-4 uppercase font-bold tracking-wider">Step 05. Interest Region</p>
+                    <select id="pref-location" class="w-full bg-gray-100 border-none rounded-2xl px-5 py-4 text-sm font-bold appearance-none focus:ring-2 focus:ring-primary/50">
+                        <option value="all">모든 여행지</option>
+                    </select>
+                    <p class="text-[11px] text-gray-400 text-center mt-4">AI가 가이드 평점과 후기를 분석하여 최적의 투어를 매칭합니다.</p>
+                </div>
+
+                <div class="mt-auto pt-8 flex gap-3">
+                    <button id="prev-btn" onclick="moveStep(-1)" class="hidden flex-1 bg-gray-100 text-gray-500 font-bold py-4 rounded-2xl">이전</button>
+                    <button id="next-btn" onclick="moveStep(1)" class="flex-[2] bg-primary text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition">다음 단계</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="result-container" class="hidden px-5 mb-8 scroll-mt-20">
+            <div class="flex items-center justify-between mb-4"><h3 class="font-bold text-xl flex items-center"><span class="text-primary mr-2"><i class="fa-solid fa-medal"></i></span> AI 추천 베스트</h3><button onclick="resetAI()" class="text-xs text-gray-400 underline">초기화</button></div>
+            <div id="recommendation-list" class="flex gap-4 overflow-x-auto no-scrollbar pb-6 px-1 -mx-1 snap-x snap-mandatory"></div>
+            <hr class="border-gray-100">
+        </section>
+
+        <section class="px-5 flex-1 pb-10">
+            <div class="sticky top-[70px] z-30 bg-white/95 backdrop-blur -mx-5 px-5 border-b border-gray-50 mb-4 shadow-sm">
+                <div class="relative py-3">
+                    <input type="text" id="search-input" placeholder="투어명, 가이드 이름, 지역 검색" class="w-full bg-slate-100 border-none rounded-full py-3 pl-11 pr-4 text-sm text-dark placeholder-gray-400 focus:ring-2 focus:ring-primary/50 transition"><i class="fa-solid fa-magnifying-glass absolute left-4 top-6 text-gray-400"></i>
+                </div>
+                
+                <div class="flex justify-between items-center pb-3">
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar flex-1 mr-2" id="sort-filter-container">
+                        <button onclick="changeSort('recommend', this)" class="filter-chip active border border-gray-200 bg-white text-dark px-3 py-1.5 rounded-full text-xs font-medium shrink-0">추천순</button>
+                        <button onclick="changeSort('review', this)" class="filter-chip border border-gray-200 bg-white text-gray-500 px-3 py-1.5 rounded-full text-xs font-medium shrink-0">후기많은순</button>
+                        <button onclick="changeSort('price_asc', this)" class="filter-chip border border-gray-200 bg-white text-gray-500 px-3 py-1.5 rounded-full text-xs font-medium shrink-0">낮은가격순</button>
+                        <button onclick="changeSort('rating', this)" class="filter-chip border border-gray-200 bg-white text-gray-500 px-3 py-1.5 rounded-full text-xs font-medium shrink-0">평점순</button>
+                    </div>
+
+                    <div class="relative shrink-0">
+                        <button onclick="toggleLocDropdown()" id="loc-btn" class="flex items-center gap-1 border border-gray-200 bg-white text-dark px-3 py-1.5 rounded-full text-xs font-bold shadow-sm hover:bg-gray-50 transition">
+                            <span id="current-loc-text">모든 지역</span> <i class="fa-solid fa-chevron-down text-[10px] ml-1"></i>
+                        </button>
+                        
+                        <div id="location-dropdown" class="hidden absolute right-0 top-full mt-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden py-1 h-64 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-end mb-4"><h3 class="font-bold text-lg text-dark">전체 투어 리스트</h3><span id="total-count" class="text-xs text-gray-400">Loading...</span></div>
+            <div id="main-list" class="space-y-4"></div>
+        </section>
+
+        <div id="comment-modal" class="modal-hidden fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeCommentModal()"></div>
+            <div class="bg-white w-full max-w-[500px] h-[85vh] rounded-t-3xl z-10 flex flex-col p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-6"><h3 class="font-bold text-xl">💬 생생 후기</h3><button onclick="closeCommentModal()" class="text-gray-400 text-2xl">&times;</button></div>
+                <div id="modal-comments-list" class="flex-1 overflow-y-auto space-y-4 mb-6"></div>
+                <div class="space-y-3">
+                    <textarea id="comment-input" class="w-full bg-slate-100 rounded-xl p-4 text-sm h-24 focus:ring-2 focus:ring-primary/20 resize-none" placeholder="투어는 어떠셨나요?"></textarea>
+                    <button onclick="submitComment()" class="w-full bg-primary text-white py-3 rounded-xl font-bold">등록하기</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="success-modal" class="modal-hidden fixed inset-0 z-[60] flex items-center justify-center px-4">
+            <div class="bg-white rounded-2xl shadow-2xl p-6 text-center w-64 transform transition-all scale-100 relative overflow-hidden">
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-500 text-xl"><i class="fa-solid fa-check"></i></div>
+                <h4 class="font-bold text-dark text-base mb-1">등록 완료!</h4>
+                <p class="text-xs text-gray-500">소중한 의견 감사합니다.</p>
+            </div>
+        </div>
+
+        <div id="loading-overlay" class="hidden fixed inset-0 z-50 bg-white/98 flex flex-col items-center justify-center px-8 text-center backdrop-blur-sm">
+            <div class="w-16 h-16 border-4 border-gray-100 border-t-primary rounded-full animate-spin mb-6"></div>
+            <h3 class="text-xl font-bold mb-2 text-dark">AI 맞춤 분석 중...</h3>
+            <p id="loading-msg" class="text-sm text-gray-500">후기 키워드와 평점을 대조하고 있습니다.</p>
+        </div>
+
+        <footer class="bg-slate-50 pt-8 pb-8 px-5 border-t border-gray-100 mt-auto text-center text-[10px] text-gray-400">
+            <p class="mb-2">본 서비스는 파트너스 활동의 일환으로 수수료를 제공받을 수 있습니다.</p>
+            <p class="font-bold text-gray-300">© 2026 GuidePick AI.</p>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================
+        // ⚠️ [새 배포] 후 발급받은 '웹 앱 URL'을 여기에 입력하세요!
+        const API_URL = "https://script.google.com/macros/s/AKfycbw9CYr6TYAvwjssedzawha6wg4Xd5o5aak1Jd3Hq5gbv_bRwrmCILN9_0NTEU3wjuYe/exec"; 
+        // ============================================
+
+        let allTours = [];
+        let filteredTours = [];
+        let currentModalId = null;
+        let currentSort = 'recommend';
+        let currentLocation = 'all';
+        let currentStep = 1;
+
+        const CLIENT_CACHE_KEY = 'guidepick_v2_1'; // 캐시 버전 업데이트
+        const CACHE_EXPIRY = 24 * 60 * 60 * 1000;
+
+        const titles = ["어떤 여행을<br>계획 중이신가요?", "선호하는 투어<br>테마가 있나요?", "누구와 함께<br>떠나시나요?", "생각하시는<br>투어 예산은?", "관심있는 여행지를<br>선택해주세요."];
+
+        document.addEventListener("DOMContentLoaded", async function() {
+            const cachedData = loadFromClientCache();
+            if (cachedData) {
+                initData(cachedData);
+                fetchDataInBackground();
+            } else {
+                await fetchDataFromServer();
+            }
+            document.getElementById('search-input').addEventListener('input', handleSearch);
+        });
+
+        // 5단계 설문 로직
+        function moveStep(direction) {
+            if (currentStep === 5 && direction === 1) { startAnalysis(); return; }
+            document.getElementById(`step-${currentStep}`).classList.add('hidden');
+            currentStep += direction;
+            document.getElementById(`step-${currentStep}`).classList.remove('hidden');
+            document.getElementById('survey-title').innerHTML = titles[currentStep - 1];
+            document.getElementById('step-indicator').innerText = `${currentStep} / 5`;
+            document.getElementById('progress-bar').style.width = `${currentStep * 20}%`;
+            document.getElementById('prev-btn').classList.toggle('hidden', currentStep === 1);
+            document.getElementById('next-btn').innerText = (currentStep === 5) ? "분석 및 추천받기" : "다음 단계";
+        }
+
+        // [핵심 수정 1: 국가명 클렌징]
+        function generateLocationDropdown() {
+            const dropdown = document.getElementById('location-dropdown');
+            const prefSelect = document.getElementById('pref-location');
+            const countryCodes = new Set();
+            
+            allTours.forEach(item => {
+                if(item.location && item.location.includes('/')) {
+                    countryCodes.add(item.location.split('/')[0]);
+                }
+            });
+
+            // 이모지 없는 순수 한글명 매핑
+            const countryMap = {
+                'US': '미국', 'FR': '프랑스', 'ES': '스페인', 'IT': '이탈리아', 'GB': '영국',
+                'CH': '스위스', 'CZ': '체코', 'AT': '오스트리아', 'PT': '포르투갈', 'HU': '헝가리',
+                'NL': '네덜란드', 'DE': '독일', 'GR': '그리스', 'AU': '호주', 'JP': '일본', 'VN': '베트남'
+            };
+
+            let html = `<button onclick="changeLocation('all')" class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 text-dark font-bold border-b border-gray-50">전체보기</button>`;
+            prefSelect.innerHTML = '<option value="all">모든 여행지</option>';
+
+            countryCodes.forEach(code => {
+                const name = countryMap[code] || code;
+                html += `<button onclick="changeLocation('${code}')" class="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 text-gray-500">${name}</button>`;
+                
+                const option = document.createElement('option');
+                option.value = code;
+                option.innerText = name;
+                prefSelect.appendChild(option);
+            });
+            dropdown.innerHTML = html;
+        }
+
+        // [핵심 수정 2: 추천/댓글 버튼 기능 복구]
+        // 1. onclick="event.stopPropagation(); ..." 추가로 부모 태그(a) 클릭 방지
+        // 2. id 값 매칭 확인
+        function renderMainList(data) {
+            const listEl = document.getElementById('main-list');
+            document.getElementById('total-count').innerText = `${data.length}개`;
+            
+            if (data.length === 0) { listEl.innerHTML = '<div class="text-center py-10 text-gray-400">조건에 맞는 투어가 없습니다.</div>'; return; }
+
+            let itemsHTML = '';
+            data.forEach((item, idx) => {
+                const price = new Intl.NumberFormat('ko-KR').format(item.price);
+                const featuresStr = item.features || "";
+                const tags = featuresStr.split(',').slice(0, 2).map(t => `<span class="bg-blue-50 text-blue-500 text-[10px] px-1.5 py-0.5 rounded mr-1">${t.trim()}</span>`).join('');
+                const isLiked = localStorage.getItem(`liked_tour_${item.id}`) ? 'text-primary' : 'text-gray-400 hover:text-primary';
+                
+                let imgSrc = item.image;
+                if (!imgSrc || imgSrc.length < 10) imgSrc = `https://source.unsplash.com/400x300/?travel,landmark`;
+                
+                const cityName = item.location.includes('/') ? item.location.split('/')[1] : item.location;
+
+                itemsHTML += `
+                <div class="bg-white rounded-xl p-3 border border-gray-100 shadow-sm flex gap-3 animate-fade-in-up hover:shadow-md transition relative" style="animation-delay: ${Math.min(idx * 0.05, 1.0)}s">
+                    <div class="w-28 h-32 rounded-lg overflow-hidden shrink-0 relative bg-gray-200">
+                        <img src="${imgSrc}" class="w-full h-full object-cover" loading="lazy">
+                        <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-1.5">
+                            <span class="text-white text-[10px] font-bold"><i class="fa-regular fa-clock mr-1"></i>${item.duration}</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col min-w-0 py-0.5">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">${item.category}</span>
+                            <div class="flex items-center text-[10px] text-gray-400"><i class="fa-solid fa-location-dot mr-0.5"></i>${cityName}</div>
+                        </div>
+                        <h4 class="font-bold text-dark text-sm leading-snug line-clamp-2 mb-1.5">${item.name}</h4>
+                        <div class="mb-2">${tags}</div>
+                        
+                        <div class="mt-auto flex justify-between items-end border-t border-gray-50 pt-2 relative z-20">
+                            <div class="flex items-center gap-3">
+                                <button onclick="event.stopPropagation(); toggleRecommend(${item.id}, this)" class="flex items-center gap-1 text-xs font-medium transition ${isLiked}">
+                                    <i class="fa-solid fa-heart"></i> <span class="like-count">${item.recommendCount}</span>
+                                </button>
+                                <span class="text-gray-200 text-[10px]">|</span>
+                                <button onclick="event.stopPropagation(); openCommentModal(${item.id})" class="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-dark transition">
+                                    <i class="fa-regular fa-comment-dots"></i> <span>${item.comments.length}</span>
+                                </button>
+                            </div>
+                            <div class="text-right">
+                                <div class="flex items-center justify-end mb-0.5">
+                                    <i class="fa-solid fa-star text-yellow-400 text-[10px] mr-1"></i>
+                                    <span class="text-xs font-bold text-dark mr-1">${item.rating}</span>
+                                    <span class="text-[10px] text-gray-400">(${item.reviewCount})</span>
+                                </div>
+                                <span class="text-base font-bold text-primary">₩${price}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="${item.link}" target="_blank" class="absolute inset-0 z-10"></a>
+                </div>`;
+            });
+            listEl.innerHTML = itemsHTML;
+        }
+
+        // 기본 데이터 로직
+        function saveToClientCache(data) { localStorage.setItem(CLIENT_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: data })); }
+        function loadFromClientCache() {
+            const record = localStorage.getItem(CLIENT_CACHE_KEY);
+            if (!record) return null;
+            const parsed = JSON.parse(record);
+            if (Date.now() - parsed.timestamp > CACHE_EXPIRY) return null;
+            return parsed.data;
+        }
+        async function fetchDataFromServer() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                saveToClientCache(data);
+                initData(data);
+            } catch (err) { console.error(err); }
+        }
+        async function fetchDataInBackground() {
+            try { const res = await fetch(API_URL); const data = await res.json(); saveToClientCache(data); } catch(e) {}
+        }
+        function initData(data) {
+            allTours = data.map(item => ({ ...item, comments: item.comments || [] }));
+            generateLocationDropdown();
+            applyUnifiedFilter();
+        }
+
+        // 필터 및 검색
+        function changeSort(type, btn) {
+            currentSort = type;
+            document.querySelectorAll('#sort-filter-container button').forEach(b => { b.classList.remove('active', 'bg-dark', 'text-white', 'border-dark'); b.classList.add('bg-white', 'text-gray-500', 'border-gray-200'); });
+            btn.classList.add('active', 'bg-dark', 'text-white', 'border-dark'); btn.classList.remove('bg-white', 'text-gray-500', 'border-gray-200');
+            applyUnifiedFilter();
+        }
+        function toggleLocDropdown() { document.getElementById('location-dropdown').classList.toggle('hidden'); }
+        function changeLocation(code) {
+            currentLocation = code;
+            const countryMap = { 'US':'미국','FR':'프랑스','ES':'스페인','IT':'이탈리아','GB':'영국','CH':'스위스','CZ':'체코','AT':'오스트리아','PT':'포르투갈','HU':'헝가리','NL':'네덜란드','DE':'독일','GR':'그리스','AU':'호주','JP':'일본','VN':'베트남' };
+            document.getElementById('current-loc-text').innerText = code === 'all' ? '모든 지역' : (countryMap[code] || code);
+            document.getElementById('location-dropdown').classList.add('hidden');
+            applyUnifiedFilter();
+        }
+        function applyUnifiedFilter() {
+            let result = [...allTours];
+            if (currentLocation !== 'all') result = result.filter(item => item.location.startsWith(currentLocation + '/'));
+            if (currentSort === 'price_asc') result.sort((a, b) => a.price - b.price);
+            else if (currentSort === 'recommend') result.sort((a, b) => b.recommendCount - a.recommendCount);
+            else if (currentSort === 'rating') result.sort((a, b) => b.rating - a.rating);
+            else if (currentSort === 'review') result.sort((a, b) => b.reviewCount - a.reviewCount);
+            filteredTours = result;
+            renderMainList(filteredTours);
+        }
+        function handleSearch(e) {
+            const q = e.target.value.toLowerCase().trim();
+            if (!q) { applyUnifiedFilter(); return; }
+            filteredTours = allTours.filter(item => item.name.toLowerCase().includes(q) || item.location.toLowerCase().includes(q) || (item.features && item.features.toLowerCase().includes(q)));
+            renderMainList(filteredTours);
+        }
+
+        // 기능 함수 (추천, 댓글)
+        function toggleRecommend(id, btn) {
+            const key = `liked_tour_${id}`;
+            if (localStorage.getItem(key)) { alert("이미 찜한 상품입니다."); return; }
+            const item = allTours.find(i => i.id === id);
+            if(item) {
+                item.recommendCount++;
+                btn.classList.add('text-primary'); btn.classList.remove('text-gray-400');
+                btn.querySelector('.like-count').innerText = item.recommendCount;
+                localStorage.setItem(key, 'true');
+                saveToClientCache(allTours);
+                fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'like', id: id }) });
+            }
+        }
+
+        function openCommentModal(id) {
+            currentModalId = id;
+            const item = allTours.find(i => i.id === id);
+            const list = document.getElementById('modal-comments-list');
+            list.innerHTML = '';
+            if(!item.comments.length) list.innerHTML = '<div class="text-center text-gray-400 text-sm py-10">첫 리뷰의 주인공이 되어보세요!</div>';
+            else [...item.comments].reverse().forEach(c => list.innerHTML += `<div class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm"><p class="text-sm text-dark mb-1">${c.text}</p><span class="text-[10px] text-gray-400">${c.date}</span></div>`);
+            
+            const modal = document.getElementById('comment-modal');
+            modal.classList.remove('modal-hidden');
+            modal.classList.add('modal-visible');
+        }
+
+        function closeCommentModal() {
+            const modal = document.getElementById('comment-modal');
+            modal.classList.add('modal-hidden');
+            modal.classList.remove('modal-visible');
+            currentModalId = null;
+        }
+
+        function submitComment() {
+            const txt = document.getElementById('comment-input').value.trim();
+            if(!txt) { alert("내용을 입력해주세요."); return; }
+            const item = allTours.find(i => i.id === currentModalId);
+            if(item) {
+                const today = new Date().toISOString().split('T')[0];
+                if(!item.comments) item.comments = [];
+                item.comments.push({ text: txt, date: today });
+                
+                document.getElementById('comment-input').value = '';
+                openCommentModal(currentModalId);
+                applyUnifiedFilter(); // 댓글 수 갱신을 위해 리스트 다시 그리기
+                saveToClientCache(allTours);
+
+                const successModal = document.getElementById('success-modal');
+                successModal.classList.remove('modal-hidden'); successModal.classList.add('modal-visible');
+                setTimeout(() => { successModal.classList.remove('modal-visible'); successModal.classList.add('modal-hidden'); }, 1500);
+
+                fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'comment', id: currentModalId, text: txt, date: today }) });
+            }
+        }
+
+        // AI 추천 로직
+        function startAnalysis() {
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            const msgs = ["여행 스타일 분석 중...", "동행자 유형 매칭...", "예산 범위 내 검색...", "최적의 가이드 선별 완료!"];
+            let i = 0;
+            const interval = setInterval(() => { i++; if(i < msgs.length) document.getElementById('loading-msg').innerText = msgs[i]; }, 600);
+            setTimeout(() => {
+                clearInterval(interval);
+                runRecommendation();
+                document.getElementById('loading-overlay').classList.add('hidden');
+                document.getElementById('result-container').classList.remove('hidden');
+                document.getElementById('result-container').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.getElementById('survey-section').classList.add('opacity-50', 'pointer-events-none');
+            }, 2500);
+        }
+        function runRecommendation() {
+            const style = document.querySelector('input[name="style"]:checked').value;
+            const themes = Array.from(document.querySelectorAll('input[name="theme"]:checked')).map(v => v.value);
+            const who = document.querySelector('input[name="who"]:checked').value;
+            const maxPrice = parseInt(document.querySelector('input[name="budget"]:checked').value) * 10000;
+            const loc = document.getElementById('pref-location').value;
+
+            let scored = allTours.map(item => {
+                if(loc !== 'all' && !item.location.startsWith(loc)) return null;
+                let score = item.rating * 10;
+                
+                if (item.price <= maxPrice) score += 30; else if (maxPrice === 990000) score += 10;
+                if (style === 'history' && (item.category.includes('박물관') || item.features.includes('역사'))) score += 20;
+                if (style === 'activity' && (item.features.includes('도보') || item.features.includes('스냅'))) score += 20;
+                if (style === 'relax' && item.category.includes('휴양')) score += 20;
+                if (who === 'family' && (item.features.includes('단독') || item.features.includes('차량'))) score += 25;
+                if (who === 'solo' && item.features.includes('조인')) score += 15;
+                themes.forEach(t => { if(item.features.includes(t)) score += 10; });
+
+                return { ...item, score: Math.round(score + (item.reviewCount/10)) };
+            }).filter(i => i !== null);
+
+            scored.sort((a, b) => b.score - a.score);
+            const container = document.getElementById('recommendation-list');
+            container.innerHTML = scored.slice(0, 3).map((item, idx) => {
+                const price = new Intl.NumberFormat('ko-KR').format(item.price);
+                let imgSrc = item.image || `https://source.unsplash.com/400x300/?travel`;
+                return `
+                <div class="snap-center shrink-0 w-[280px] bg-white rounded-2xl shadow-float overflow-hidden border border-blue-100 relative group">
+                    <div class="h-40 relative bg-gray-200">
+                        <span class="absolute top-3 left-3 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm z-10">매칭률 ${(99 - idx*2)}%</span>
+                        <img src="${imgSrc}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-4">
+                        <div class="text-[10px] text-gray-500 mb-1">${item.category}</div>
+                        <h4 class="font-bold text-dark truncate mb-1">${item.name}</h4>
+                        <div class="flex justify-between items-center border-t border-gray-50 pt-3">
+                            <span class="font-bold text-primary">₩${price}</span>
+                            <a href="${item.link}" target="_blank" class="bg-dark text-white text-xs font-bold px-3 py-1.5 rounded-lg">예약하기</a>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        function resetAI() { window.location.reload(); }
+        
+        document.addEventListener('click', function(e) {
+            if (!document.getElementById('loc-btn').contains(e.target) && !document.getElementById('location-dropdown').contains(e.target)) {
+                document.getElementById('location-dropdown').classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
