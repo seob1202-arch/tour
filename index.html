@@ -203,6 +203,14 @@
             document.getElementById('search-input').addEventListener('input', handleSearch);
         });
 
+        // 뒤로 가기 감지 로직 (모달만 닫기)
+        window.addEventListener('popstate', function(event) {
+            const modal = document.getElementById('comment-modal');
+            if (modal.classList.contains('modal-visible')) {
+                closeCommentModal(true);
+            }
+        });
+
         // 5단계 설문 로직
         function moveStep(direction) {
             if (currentStep === 5 && direction === 1) { startAnalysis(); return; }
@@ -216,7 +224,6 @@
             document.getElementById('next-btn').innerText = (currentStep === 5) ? "분석 및 추천받기" : "다음 단계";
         }
 
-        // [핵심 수정 1: 국가명 클렌징]
         function generateLocationDropdown() {
             const dropdown = document.getElementById('location-dropdown');
             const prefSelect = document.getElementById('pref-location');
@@ -228,7 +235,6 @@
                 }
             });
 
-            // 이모지 없는 순수 한글명 매핑
             const countryMap = {
                 'US': '미국', 'FR': '프랑스', 'ES': '스페인', 'IT': '이탈리아', 'GB': '영국',
                 'CH': '스위스', 'CZ': '체코', 'AT': '오스트리아', 'PT': '포르투갈', 'HU': '헝가리',
@@ -250,9 +256,7 @@
             dropdown.innerHTML = html;
         }
 
-        // [핵심 수정 2: 추천/댓글 버튼 기능 복구]
-        // 1. onclick="event.stopPropagation(); ..." 추가로 부모 태그(a) 클릭 방지
-        // 2. id 값 매칭 확인
+        // [핵심 수정] 터치 인식률과 속도를 극대화한 메인 리스트 렌더링
         function renderMainList(data) {
             const listEl = document.getElementById('main-list');
             document.getElementById('total-count').innerText = `${data.length}개`;
@@ -288,15 +292,17 @@
                         <div class="mb-2">${tags}</div>
                         
                         <div class="mt-auto flex justify-between items-end border-t border-gray-50 pt-2 relative z-20">
-                            <div class="flex items-center gap-3">
-                                <button onclick="event.stopPropagation(); toggleRecommend(${item.id}, this)" class="flex items-center gap-1 text-xs font-medium transition ${isLiked}">
+                            
+                            <div class="flex items-center gap-1">
+                                <button onclick="event.preventDefault(); event.stopPropagation(); toggleRecommend('${item.id}', this)" class="flex items-center gap-1 text-xs font-medium transition ${isLiked} relative z-30 pointer-events-auto py-2 pr-2 -my-2 touch-manipulation select-none" style="-webkit-tap-highlight-color: transparent;">
                                     <i class="fa-solid fa-heart"></i> <span class="like-count">${item.recommendCount}</span>
                                 </button>
-                                <span class="text-gray-200 text-[10px]">|</span>
-                                <button onclick="event.stopPropagation(); openCommentModal(${item.id})" class="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-dark transition">
+                                <span class="text-gray-200 text-[10px] mx-1">|</span>
+                                <button onclick="event.preventDefault(); event.stopPropagation(); openCommentModal('${item.id}')" class="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-dark transition relative z-30 pointer-events-auto py-2 pl-2 -my-2 touch-manipulation select-none" style="-webkit-tap-highlight-color: transparent;">
                                     <i class="fa-regular fa-comment-dots"></i> <span>${item.comments.length}</span>
                                 </button>
                             </div>
+
                             <div class="text-right">
                                 <div class="flex items-center justify-end mb-0.5">
                                     <i class="fa-solid fa-star text-yellow-400 text-[10px] mr-1"></i>
@@ -313,7 +319,6 @@
             listEl.innerHTML = itemsHTML;
         }
 
-        // 기본 데이터 로직
         function saveToClientCache(data) { localStorage.setItem(CLIENT_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: data })); }
         function loadFromClientCache() {
             const record = localStorage.getItem(CLIENT_CACHE_KEY);
@@ -339,7 +344,6 @@
             applyUnifiedFilter();
         }
 
-        // 필터 및 검색
         function changeSort(type, btn) {
             currentSort = type;
             document.querySelectorAll('#sort-filter-container button').forEach(b => { b.classList.remove('active', 'bg-dark', 'text-white', 'border-dark'); b.classList.add('bg-white', 'text-gray-500', 'border-gray-200'); });
@@ -371,11 +375,10 @@
             renderMainList(filteredTours);
         }
 
-        // 기능 함수 (추천, 댓글)
         function toggleRecommend(id, btn) {
             const key = `liked_tour_${id}`;
             if (localStorage.getItem(key)) { alert("이미 찜한 상품입니다."); return; }
-            const item = allTours.find(i => i.id === id);
+            const item = allTours.find(i => String(i.id) === String(id));
             if(item) {
                 item.recommendCount++;
                 btn.classList.add('text-primary'); btn.classList.remove('text-gray-400');
@@ -388,7 +391,7 @@
 
         function openCommentModal(id) {
             currentModalId = id;
-            const item = allTours.find(i => i.id === id);
+            const item = allTours.find(i => String(i.id) === String(id));
             const list = document.getElementById('modal-comments-list');
             list.innerHTML = '';
             if(!item.comments.length) list.innerHTML = '<div class="text-center text-gray-400 text-sm py-10">첫 리뷰의 주인공이 되어보세요!</div>';
@@ -397,19 +400,25 @@
             const modal = document.getElementById('comment-modal');
             modal.classList.remove('modal-hidden');
             modal.classList.add('modal-visible');
+
+            window.history.pushState({ modal: 'open' }, '', '#modal');
         }
 
-        function closeCommentModal() {
+        function closeCommentModal(isFromPopState = false) {
             const modal = document.getElementById('comment-modal');
             modal.classList.add('modal-hidden');
             modal.classList.remove('modal-visible');
             currentModalId = null;
+
+            if (!isFromPopState && window.location.hash === '#modal') {
+                window.history.back();
+            }
         }
 
         function submitComment() {
             const txt = document.getElementById('comment-input').value.trim();
             if(!txt) { alert("내용을 입력해주세요."); return; }
-            const item = allTours.find(i => i.id === currentModalId);
+            const item = allTours.find(i => String(i.id) === String(currentModalId));
             if(item) {
                 const today = new Date().toISOString().split('T')[0];
                 if(!item.comments) item.comments = [];
@@ -417,7 +426,7 @@
                 
                 document.getElementById('comment-input').value = '';
                 openCommentModal(currentModalId);
-                applyUnifiedFilter(); // 댓글 수 갱신을 위해 리스트 다시 그리기
+                applyUnifiedFilter(); 
                 saveToClientCache(allTours);
 
                 const successModal = document.getElementById('success-modal');
@@ -428,7 +437,6 @@
             }
         }
 
-        // AI 추천 로직
         function startAnalysis() {
             document.getElementById('loading-overlay').classList.remove('hidden');
             const msgs = ["여행 스타일 분석 중...", "동행자 유형 매칭...", "예산 범위 내 검색...", "최적의 가이드 선별 완료!"];
@@ -443,6 +451,7 @@
                 document.getElementById('survey-section').classList.add('opacity-50', 'pointer-events-none');
             }, 2500);
         }
+
         function runRecommendation() {
             const style = document.querySelector('input[name="style"]:checked').value;
             const themes = Array.from(document.querySelectorAll('input[name="theme"]:checked')).map(v => v.value);
@@ -487,6 +496,7 @@
                 </div>`;
             }).join('');
         }
+
         function resetAI() { window.location.reload(); }
         
         document.addEventListener('click', function(e) {
