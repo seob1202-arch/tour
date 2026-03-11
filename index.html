@@ -162,6 +162,11 @@
             </div>
         </div>
 
+        <div id="custom-toast" class="fixed top-[-100px] left-1/2 transform -translate-x-1/2 bg-gray-800/95 backdrop-blur text-white px-6 py-3.5 rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.2)] transition-all duration-500 z-[100] flex items-center gap-2.5 opacity-0 pointer-events-none text-[15px] font-bold whitespace-nowrap">
+            <i id="toast-icon" class="fa-solid fa-circle-exclamation text-yellow-400 text-lg"></i>
+            <span id="toast-msg">메시지</span>
+        </div>
+
         <div id="loading-overlay" class="hidden fixed inset-0 z-50 bg-white/98 flex flex-col items-center justify-center px-8 text-center backdrop-blur-sm">
             <div class="w-16 h-16 border-4 border-gray-100 border-t-primary rounded-full animate-spin mb-6"></div>
             <h3 class="text-xl font-bold mb-2 text-dark">AI 맞춤 분석 중...</h3>
@@ -176,7 +181,6 @@
 
     <script>
         // ============================================
-        // ⚠️ [새 배포] 후 발급받은 '웹 앱 URL'을 여기에 입력하세요!
         const API_URL = "https://script.google.com/macros/s/AKfycbw9CYr6TYAvwjssedzawha6wg4Xd5o5aak1Jd3Hq5gbv_bRwrmCILN9_0NTEU3wjuYe/exec"; 
         // ============================================
 
@@ -187,7 +191,7 @@
         let currentLocation = 'all';
         let currentStep = 1;
 
-        const CLIENT_CACHE_KEY = 'guidepick_v2_1'; // 캐시 버전 업데이트
+        const CLIENT_CACHE_KEY = 'guidepick_v2_1';
         const CACHE_EXPIRY = 24 * 60 * 60 * 1000;
 
         const titles = ["어떤 여행을<br>계획 중이신가요?", "선호하는 투어<br>테마가 있나요?", "누구와 함께<br>떠나시나요?", "생각하시는<br>투어 예산은?", "관심있는 여행지를<br>선택해주세요."];
@@ -203,7 +207,32 @@
             document.getElementById('search-input').addEventListener('input', handleSearch);
         });
 
-        // 뒤로 가기 감지 로직 (모달만 닫기)
+        // [추가] 세련된 토스트 알림 표시 함수
+        let toastTimeout;
+        function showCustomToast(msg, type = 'normal') {
+            const toast = document.getElementById('custom-toast');
+            const toastMsg = document.getElementById('toast-msg');
+            const icon = document.getElementById('toast-icon');
+
+            toastMsg.innerText = msg;
+            
+            if (type === 'error') {
+                icon.className = 'fa-solid fa-circle-exclamation text-yellow-400 text-lg';
+            } else {
+                icon.className = 'fa-regular fa-circle-check text-green-400 text-lg';
+            }
+
+            // 위에서 아래로 부드럽게 떨어지는 애니메이션
+            toast.classList.remove('top-[-100px]', 'opacity-0');
+            toast.classList.add('top-12', 'opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('top-12', 'opacity-100');
+                toast.classList.add('top-[-100px]', 'opacity-0');
+            }, 2500);
+        }
+
         window.addEventListener('popstate', function(event) {
             const modal = document.getElementById('comment-modal');
             if (modal.classList.contains('modal-visible')) {
@@ -211,7 +240,6 @@
             }
         });
 
-        // 5단계 설문 로직
         function moveStep(direction) {
             if (currentStep === 5 && direction === 1) { startAnalysis(); return; }
             document.getElementById(`step-${currentStep}`).classList.add('hidden');
@@ -256,7 +284,6 @@
             dropdown.innerHTML = html;
         }
 
-        // [핵심 수정] 터치 인식률과 속도를 극대화한 메인 리스트 렌더링
         function renderMainList(data) {
             const listEl = document.getElementById('main-list');
             document.getElementById('total-count').innerText = `${data.length}개`;
@@ -320,6 +347,7 @@
         }
 
         function saveToClientCache(data) { localStorage.setItem(CLIENT_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: data })); }
+        
         function loadFromClientCache() {
             const record = localStorage.getItem(CLIENT_CACHE_KEY);
             if (!record) return null;
@@ -327,6 +355,7 @@
             if (Date.now() - parsed.timestamp > CACHE_EXPIRY) return null;
             return parsed.data;
         }
+        
         async function fetchDataFromServer() {
             try {
                 const res = await fetch(API_URL);
@@ -335,11 +364,19 @@
                 initData(data);
             } catch (err) { console.error(err); }
         }
+        
         async function fetchDataInBackground() {
             try { const res = await fetch(API_URL); const data = await res.json(); saveToClientCache(data); } catch(e) {}
         }
+        
+        // [수정] 데이터 로드 시 ID 충돌 방지를 위한 강제 식별자 생성 방어 로직
         function initData(data) {
-            allTours = data.map(item => ({ ...item, comments: item.comments || [] }));
+            allTours = data.map((item, index) => ({ 
+                ...item, 
+                // 구글 시트에 ID가 누락되거나 중복되더라도 프론트에서 고유한 값을 임시로 쥐어주어 좋아요 충돌 완벽 차단
+                id: (item.id !== undefined && item.id !== "") ? String(item.id) : `fallback_id_${index}`,
+                comments: item.comments || [] 
+            }));
             generateLocationDropdown();
             applyUnifiedFilter();
         }
@@ -350,7 +387,9 @@
             btn.classList.add('active', 'bg-dark', 'text-white', 'border-dark'); btn.classList.remove('bg-white', 'text-gray-500', 'border-gray-200');
             applyUnifiedFilter();
         }
+        
         function toggleLocDropdown() { document.getElementById('location-dropdown').classList.toggle('hidden'); }
+        
         function changeLocation(code) {
             currentLocation = code;
             const countryMap = { 'US':'미국','FR':'프랑스','ES':'스페인','IT':'이탈리아','GB':'영국','CH':'스위스','CZ':'체코','AT':'오스트리아','PT':'포르투갈','HU':'헝가리','NL':'네덜란드','DE':'독일','GR':'그리스','AU':'호주','JP':'일본','VN':'베트남' };
@@ -358,6 +397,7 @@
             document.getElementById('location-dropdown').classList.add('hidden');
             applyUnifiedFilter();
         }
+        
         function applyUnifiedFilter() {
             let result = [...allTours];
             if (currentLocation !== 'all') result = result.filter(item => item.location.startsWith(currentLocation + '/'));
@@ -368,6 +408,7 @@
             filteredTours = result;
             renderMainList(filteredTours);
         }
+        
         function handleSearch(e) {
             const q = e.target.value.toLowerCase().trim();
             if (!q) { applyUnifiedFilter(); return; }
@@ -375,9 +416,13 @@
             renderMainList(filteredTours);
         }
 
+        // [수정] 투박한 alert() 대신 세련된 토스트(showCustomToast) 팝업 적용
         function toggleRecommend(id, btn) {
             const key = `liked_tour_${id}`;
-            if (localStorage.getItem(key)) { alert("이미 찜한 상품입니다."); return; }
+            if (localStorage.getItem(key)) { 
+                showCustomToast("이미 찜한 상품입니다.", "error"); 
+                return; 
+            }
             const item = allTours.find(i => String(i.id) === String(id));
             if(item) {
                 item.recommendCount++;
@@ -385,6 +430,9 @@
                 btn.querySelector('.like-count').innerText = item.recommendCount;
                 localStorage.setItem(key, 'true');
                 saveToClientCache(allTours);
+                
+                showCustomToast("❤️ 관심 목록에 담겼습니다", "success");
+                
                 fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'like', id: id }) });
             }
         }
@@ -415,9 +463,13 @@
             }
         }
 
+        // [수정] 빈칸 제출 시 투박한 alert() 대신 토스트 팝업 적용
         function submitComment() {
             const txt = document.getElementById('comment-input').value.trim();
-            if(!txt) { alert("내용을 입력해주세요."); return; }
+            if(!txt) { 
+                showCustomToast("내용을 입력해주세요.", "error"); 
+                return; 
+            }
             const item = allTours.find(i => String(i.id) === String(currentModalId));
             if(item) {
                 const today = new Date().toISOString().split('T')[0];
